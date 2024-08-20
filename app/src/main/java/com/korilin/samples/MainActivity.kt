@@ -115,7 +115,9 @@ fun NetAvatarImage(model: String) {
 }
 
 
-class Holder(val composer: TestImageComposeView) : ViewHolder(composer)
+abstract class Holder(val composer: TestImageComposeView) : ViewHolder(composer)
+class Holder1(composer: TestImageComposeView) : Holder(composer)
+class Holder2(composer: TestImageComposeView) : Holder(composer)
 
 class TestRvListAdapter(val type: NetTestImageType) : Adapter<Holder>() {
 
@@ -124,7 +126,15 @@ class TestRvListAdapter(val type: NetTestImageType) : Adapter<Holder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val view = TestImageComposeView(parent.context)
         view.type = type
-        return Holder(view)
+        return when(viewType) {
+            0 -> Holder1(view)
+            1 -> Holder2(view)
+            else -> throw IllegalStateException("Unsupported viewType")
+        }
+    }
+
+    override fun getItemViewType(position: Int): Int {
+        return position % 2
     }
 
     override fun getItemCount(): Int = list.size
