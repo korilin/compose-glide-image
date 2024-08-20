@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.isUnspecified
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.DefaultAlpha
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -23,9 +24,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.util.trace
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
-import com.bumptech.glide.RequestManager
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.manager
 import com.bumptech.glide.request.Request
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.SizeReadyCallback
@@ -52,6 +53,20 @@ import kotlinx.coroutines.plus
 import kotlin.math.roundToInt
 
 
+object GlideAsyncImageConfig {
+    var loggerEnable = true
+}
+
+private object Logger {
+    fun log(tag: String, message: String) {
+        if (GlideAsyncImageConfig.loggerEnable) Log.d(tag, message)
+    }
+
+    fun error(tag: String, exception: GlideException?) {
+        exception?.logRootCauses(tag)
+    }
+}
+
 private data class GlideSize(val width: Int, val height: Int)
 
 private sealed interface ResolvableGlideSize {
@@ -74,15 +89,24 @@ private class AsyncGlideSize : ResolvableGlideSize {
         this.sizeFlow.tryEmit(size)
     }
 
+    private fun Float.roundFiniteToInt() = if (isFinite()) roundToInt() else Target.SIZE_ORIGINAL
+
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun getSize(): GlideSize {
         return sizeFlow
             .transformLatest { emitAll(it) }
             .mapNotNull {
-                GlideSize(
-                    width = it.width.roundToInt(),
-                    height = it.height.roundToInt()
-                )
+                when {
+                    it.isUnspecified -> GlideSize(
+                        width = Target.SIZE_ORIGINAL,
+                        height = Target.SIZE_ORIGINAL
+                    )
+
+                    else -> GlideSize(
+                        width = it.width.roundFiniteToInt(),
+                        height = it.height.roundFiniteToInt()
+                    )
+                }
             }.first()
     }
 }
@@ -90,15 +114,19 @@ private class AsyncGlideSize : ResolvableGlideSize {
 private sealed interface GlideLoadResult {
     data object Loading : GlideLoadResult
     data object Error : GlideLoadResult
-    data class Success(val painter: Painter) : GlideLoadResult
+    data class Success(val painter: DrawablePainter) : GlideLoadResult {
+        override fun toString(): String {
+            return "Success(painter={ painterIntrinsic: ${painter.intrinsicSize}})"
+        }
+    }
 }
 
 private fun RequestBuilder<Drawable>.flow(
-    manager: RequestManager,
     size: ResolvableGlideSize,
+    listener: RequestListener<Drawable>?,
 ): Flow<GlideLoadResult> {
     return callbackFlow {
-        val target = FlowTarget(this, size)
+        val target = FlowTarget(this, size, listener)
         listener(target).into(target)
         awaitClose { manager.clear(target) }
     }
@@ -107,7 +135,14 @@ private fun RequestBuilder<Drawable>.flow(
 private class FlowTarget(
     private val scope: ProducerScope<GlideLoadResult>,
     private val size: ResolvableGlideSize,
+    private val listener: RequestListener<Drawable>?,
 ) : Target<Drawable>, RequestListener<Drawable> {
+
+    private val Drawable.width: Int
+        get() = (this as? BitmapDrawable)?.bitmap?.width ?: intrinsicWidth
+
+    private val Drawable.height: Int
+        get() = (this as? BitmapDrawable)?.bitmap?.height ?: intrinsicHeight
 
     override fun onLoadFailed(
         e: GlideException?,
@@ -115,14 +150,10 @@ private class FlowTarget(
         target: Target<Drawable>,
         isFirstResource: Boolean
     ): Boolean {
+        Logger.error("FlowTarget", e)
+        listener?.onLoadFailed(e, model, target, isFirstResource)
         return false
     }
-
-    private val Drawable.width: Int
-        get() = (this as? BitmapDrawable)?.bitmap?.width ?: intrinsicWidth
-
-    private val Drawable.height: Int
-        get() = (this as? BitmapDrawable)?.bitmap?.height ?: intrinsicHeight
 
     override fun onResourceReady(
         resource: Drawable,
@@ -131,12 +162,18 @@ private class FlowTarget(
         dataSource: DataSource,
         isFirstResource: Boolean
     ): Boolean {
+        Logger.log(
+            "FlowTarget",
+            "onResourceReady first:$isFirstResource source:$dataSource Size(${resource.width}, ${resource.height}) model:$model "
+        )
+        listener?.onResourceReady(resource, model, target, dataSource, isFirstResource)
         return false
     }
 
     override fun getSize(cb: SizeReadyCallback) {
         scope.launch {
             val complete = size.getSize()
+            Logger.log("FlowTarget", "getSize $complete")
             cb.onSizeReady(complete.width, complete.height)
         }
     }
@@ -171,12 +208,13 @@ private class FlowTarget(
 @Stable
 private class GlideAsyncImagePainter(
     val model: Any?,
-    val manager: RequestManager,
+    val context: Context,
     val scope: CoroutineScope,
-    val loading: Painter? = null,
-    val failure: Painter? = null,
-    val contentScale: ContentScale = ContentScale.Fit,
-    val setupRequest: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable>,
+    val loading: Painter?,
+    val failure: Painter?,
+    val scale: ContentScale,
+    val listener: RequestListener<Drawable>?,
+    val request: Context.() -> RequestBuilder<Drawable>,
 ) : Painter(), RememberObserver {
 
     private var painter by mutableStateOf(loading)
@@ -238,44 +276,75 @@ private class GlideAsyncImagePainter(
         rememberJob = null
     }
 
+    /**
+     * @see <a href="https://github.com/bumptech/glide/blob/master/integration/compose/src/main/java/com/bumptech/glide/integration/compose/GlideImage.kt#L407">GlideImage</a>
+     */
+    private fun RequestBuilder<Drawable>.setupScaleTransform(): RequestBuilder<Drawable> {
+        return when (scale) {
+            ContentScale.Crop -> optionalCenterCrop()
+
+            // Outside compose, glide would use fitCenter() for FIT. But that's probably not a good
+            // decision given how unimportant Bitmap re-use is relative to minimizing texture sizes now.
+            // So instead we'll do something different and prefer not to upscale, which means using
+            // centerInside(). The UI can still scale the view even if the Bitmap is smaller.
+            ContentScale.Fit,
+            ContentScale.FillHeight,
+            ContentScale.FillWidth,
+            ContentScale.FillBounds -> optionalCenterInside()
+
+            ContentScale.Inside -> optionalCenterInside()
+
+            // NONE
+            else -> this
+        }
+    }
+
     private suspend fun startRequest() {
         val size = AsyncGlideSize()
         size.connect(drawSize)
-        manager.asDrawable().setupRequest().load(model).flow(manager, size).collectLatest {
-            Log.d("GlideAsyncImagePainter", "result $remembered $model -> $it")
-            if (!remembered) return@collectLatest
-            val older = painter
-            painter = when (it) {
-                is GlideLoadResult.Loading -> loading
-                is GlideLoadResult.Error -> failure
-                is GlideLoadResult.Success -> it.painter
+
+        request(context)
+            .setupScaleTransform()
+            .load(model)
+            .flow(size, listener)
+            .collectLatest {
+                Logger.log("GlideAsyncImagePainter", "result $remembered $model -> $it")
+                if (!remembered) return@collectLatest
+                val older = painter
+                painter = when (it) {
+                    is GlideLoadResult.Loading -> loading
+                    is GlideLoadResult.Error -> failure
+                    is GlideLoadResult.Success -> it.painter
+                }
+                if (older != painter) {
+                    (older as? RememberObserver)?.onForgotten()
+                    (painter as? RememberObserver)?.onRemembered()
+                }
             }
-            if (older != painter) {
-                (older as? RememberObserver)?.onForgotten()
-                (painter as? RememberObserver)?.onRemembered()
-            }
-        }
     }
 }
 
 @Composable
 internal fun rememberGlideAsyncImagePainter(
     model: Any?,
+    scale: ContentScale,
     loading: Painter? = null,
     failure: Painter? = null,
-    setupRequest: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
+    listener: RequestListener<Drawable>? = null,
+    request: (Context) -> RequestBuilder<Drawable> = { Glide.with(it).asDrawable() },
 ): Painter {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     return remember(model) {
-        val manager = Glide.with(context)
         GlideAsyncImagePainter(
-            model,
-            manager,
-            scope,
-            loading,
-            failure,
-            setupRequest = setupRequest
+            model = model,
+            context = context,
+            scope = scope,
+            loading = loading,
+            failure = failure,
+            scale = scale,
+            listener = listener,
+            request = request
         )
     }
 }
