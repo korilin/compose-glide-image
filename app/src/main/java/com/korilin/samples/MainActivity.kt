@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
@@ -44,13 +46,14 @@ import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import com.korilin.samples.ui.theme.ComposeglideimageTheme
 
+private const val rv = true
+private const val diffId = true
+private val type = NetTestImageType.GlideImage
+
 class MainActivity : ComponentActivity() {
-    @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val rv = true
-        val type = NetTestImageType.GlideImage
 
         setContent {
             ComposeglideimageTheme {
@@ -66,6 +69,8 @@ class MainActivity : ComponentActivity() {
 }
 
 private const val WEBP_URL = "https://mathiasbynens.be/demo/animated-webp-supported.webp"
+private const val STATIC_URL =
+    "https://olimg.3dmgame.com/uploads/images/xiaz/2020/1023/1603430276493.jpg"
 
 enum class NetTestImageType {
     Painter, GlideImage
@@ -73,10 +78,7 @@ enum class NetTestImageType {
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-fun NetTestImage(id: Int, type: NetTestImageType) {
-
-    val model = "$WEBP_URL?id=$id"
-
+fun NetTestImage(model: String, type: NetTestImageType) {
     when (type) {
         NetTestImageType.Painter -> Image(
             painter = rememberGlideAsyncImagePainter(
@@ -84,7 +86,7 @@ fun NetTestImage(id: Int, type: NetTestImageType) {
             ),
             contentDescription = null,
             modifier = Modifier
-                .fillMaxHeight()
+                .height(20.dp)
                 .wrapContentWidth(),
             contentScale = ContentScale.FillHeight,
         )
@@ -93,12 +95,23 @@ fun NetTestImage(id: Int, type: NetTestImageType) {
             model = model,
             contentDescription = null,
             modifier = Modifier
-                .size(30.dp),
+                .size(20.dp),
             contentScale = ContentScale.FillHeight,
         )
     }
+}
 
-
+@Composable
+fun NetAvatarImage(model: String) {
+    Image(
+        painter = rememberGlideAsyncImagePainter(
+            model
+        ),
+        contentDescription = null,
+        modifier = Modifier
+            .size(50.dp),
+        contentScale = ContentScale.FillHeight,
+    )
 }
 
 
@@ -132,31 +145,7 @@ class TestImageComposeView(context: Context) : AbstractComposeView(context) {
 
     @Composable
     override fun Content() {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(30.dp),
-            horizontalArrangement = Arrangement.Start
-        ) {
-            Text(
-                text = pos.toString()
-            )
-
-            NetTestImage(
-                id = pos,
-                type = type
-            )
-
-            NetTestImage(
-                id = pos,
-                type = type
-            )
-
-            NetTestImage(
-                id = pos,
-                type = type
-            )
-        }
+        TestItem(type, pos)
     }
 }
 
@@ -182,34 +171,50 @@ fun TestComposeList(type: NetTestImageType) {
 
         LazyColumn {
             items(500) {
+                TestItem(type, it)
+            }
+        }
+    }
+}
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(30.dp),
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    Text(
-                        text = it.toString()
-                    )
+@Composable
+fun TestItem(type: NetTestImageType, id: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        Text(
+            text = id.toString()
+        )
 
+        Spacer(modifier = Modifier.width(10.dp))
+
+        NetAvatarImage(STATIC_URL)
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column() {
+            Row(
+                horizontalArrangement = Arrangement.Start
+            ) {
+
+                val models = remember {
+                    val list = List(4) { WEBP_URL }
+                    if (diffId) {
+                        list.mapIndexed { i, url -> "${url}?id=${id}_${i}" }
+                    } else list
+                }
+
+                for (model in models) {
                     NetTestImage(
-                        id = it,
-                        type = type
-                    )
-
-                    NetTestImage(
-                        id = it,
-                        type = type
-                    )
-
-                    NetTestImage(
-                        id = it,
+                        model = model,
                         type = type
                     )
                 }
-
             }
+
+            Text("Glide Image Test")
         }
     }
 }
