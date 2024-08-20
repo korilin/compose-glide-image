@@ -12,6 +12,9 @@ composeBom = "2024.06.00"
 glide = "4.16.0"
 glide-plugin = "2.24.0"
 glide-awebp = "3.0.1"
+glide-compose = "1.0.0-beta01"
+
+recyclerview = "1.3.2"
 
 accompanist = "0.34.0"
 
@@ -31,6 +34,7 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
 
 
 # glide
@@ -40,6 +44,7 @@ glide-compiler = { group = "com.github.bumptech.glide", name = "compiler", versi
 glide-gif = { group = "com.github.bumptech.glide", name = "gifencoder-integration", version.ref = "glide" }
 glide-awebp = { group = "com.github.penfeizhou.android.animation", name = "awebp", version.ref = "glide-awebp" }
 glide-plugin = { group = "com.github.penfeizhou.android.animation", name = "glide-plugin", version.ref = "glide-plugin" }
+glide-compose = { group = "com.github.bumptech.glide", name = "compose", version.ref = "glide-compose" }
 accompanist-drawablepainter = { group = "com.google.accompanist", name = "accompanist-drawablepainter", version.ref = "accompanist" }
 
 
@@ -50,5 +55,6 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 [bundles]
 glide = [
     "glide-runtime", "glide-okhttp3",
-    "glide-plugin", "glide-gif", "glide-awebp"
+    "glide-plugin", "glide-gif", "glide-awebp",
+    "glide-compose"
 ]
