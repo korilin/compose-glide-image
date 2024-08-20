@@ -39,6 +39,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.Adapter
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
+import coil.compose.rememberAsyncImagePainter
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import com.korilin.samples.ui.theme.ComposeglideimageTheme
@@ -105,6 +106,15 @@ class ListTestActivity: ComponentActivity() {
                 contentDescription = null,
                 modifier = Modifier
                     .size(20.dp),
+                contentScale = ContentScale.FillHeight,
+            )
+
+            NetTestImageType.Coil -> Image(
+                painter = rememberAsyncImagePainter(model),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .heightIn(max = 20.dp),
                 contentScale = ContentScale.FillHeight,
             )
         }

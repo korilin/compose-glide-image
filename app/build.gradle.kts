@@ -70,4 +70,5 @@ dependencies {
     implementation(libs.bundles.glide)
     implementation(libs.accompanist.drawablepainter)
     implementation(libs.recyclerview)
+    implementation(libs.coil.compose)
 }

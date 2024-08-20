@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
     private fun LazyListScope.spacerItem(content: @Composable () -> Unit) {
         item {
             Box(
-                modifier = Modifier.padding(vertical = 20.dp)
+                modifier = Modifier.padding(vertical = 5.dp)
             ) {
                 content()
             }
@@ -109,25 +109,6 @@ class MainActivity : ComponentActivity() {
 
                         spacerItem {
                             ListTestItem(
-                                text = "NoCache GlideImage Rv List Test",
-                                type = NetTestImageType.GlideImage,
-                                useRv = true,
-                                diffId = true
-                            )
-                        }
-
-                        spacerItem {
-                            ListTestItem(
-                                text = "MemoryCache GlideImage Rv List Test",
-                                type = NetTestImageType.GlideImage,
-                                useRv = true,
-                                diffId = false
-                            )
-                        }
-
-
-                        spacerItem {
-                            ListTestItem(
                                 text = "NoCache Painter LazyList Test",
                                 type = NetTestImageType.Painter,
                                 useRv = false,
@@ -141,6 +122,24 @@ class MainActivity : ComponentActivity() {
                                 text = "MemoryCache Painter LazyList Test",
                                 type = NetTestImageType.Painter,
                                 useRv = false,
+                                diffId = false
+                            )
+                        }
+
+                        spacerItem {
+                            ListTestItem(
+                                text = "NoCache GlideImage Rv List Test",
+                                type = NetTestImageType.GlideImage,
+                                useRv = true,
+                                diffId = true
+                            )
+                        }
+
+                        spacerItem {
+                            ListTestItem(
+                                text = "MemoryCache GlideImage Rv List Test",
+                                type = NetTestImageType.GlideImage,
+                                useRv = true,
                                 diffId = false
                             )
                         }
@@ -163,6 +162,42 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+
+                        spacerItem {
+                            ListTestItem(
+                                text = "NoCache Coil Rv List Test",
+                                type = NetTestImageType.Coil,
+                                useRv = true,
+                                diffId = true
+                            )
+                        }
+
+                        spacerItem {
+                            ListTestItem(
+                                text = "MemoryCache Coil Rv List Test",
+                                type = NetTestImageType.Coil,
+                                useRv = true,
+                                diffId = false
+                            )
+                        }
+
+                        spacerItem {
+                            ListTestItem(
+                                text = "NoCache Coil LazyList Test",
+                                type = NetTestImageType.Coil,
+                                useRv = false,
+                                diffId = true
+                            )
+                        }
+
+                        spacerItem {
+                            ListTestItem(
+                                text = "MemoryCache Coil LazyList Test",
+                                type = NetTestImageType.Coil,
+                                useRv = false,
+                                diffId = false
+                            )
+                        }
                     }
                 }
             }
