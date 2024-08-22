@@ -4,7 +4,9 @@ import android.content.Context
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.RememberObserver
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -50,9 +52,6 @@ import kotlinx.coroutines.plus
 
 @Stable
 private class GlideAsyncImagePainter(
-    val model: Any?,
-    val context: Context,
-    val scope: CoroutineScope,
     val loading: Painter?,
     val failure: Painter?,
     val scale: ContentScale,
@@ -65,16 +64,14 @@ private class GlideAsyncImagePainter(
     private var colorFilter: ColorFilter? by mutableStateOf(null)
 
     override val intrinsicSize: Size
-        get() = painter?.intrinsicSize ?: Size.Unspecified
+        get() = painter?.intrinsicSize ?: Size.Zero
 
-    private val drawSize = MutableSharedFlow<Size>(
-        replay = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
+    private val glideSize = AsyncGlideSize()
 
     override fun DrawScope.onDraw() {
-        drawSize.tryEmit(size)
-        (painter ?: loading)?.apply { draw(intrinsicSize, alpha, colorFilter) }
+        glideSize.tryEmit(size)
+        Logger.log("GlideAsyncImagePainter", "onDraw $size $intrinsicSize ${Exception().stackTraceToString()}")
+        (painter ?: loading)?.apply { draw(size, alpha, colorFilter) }
     }
 
     private var rememberJob: Job? = null
@@ -85,12 +82,9 @@ private class GlideAsyncImagePainter(
 
     private var remembered = false
 
-    override fun onRemembered() = trace("GlideAsyncImagePainter.onRemembered") {
+    override fun onRemembered() {
         (painter as? RememberObserver)?.onRemembered()
         remembered = true
-        rememberJob = (scope + Dispatchers.Main.immediate).launch {
-            startRequest()
-        }
     }
 
     override fun onForgotten() {
@@ -117,6 +111,8 @@ private class GlideAsyncImagePainter(
         remembered = false
         rememberJob?.cancel()
         rememberJob = null
+        // finish all flow target
+        glideSize.tryEmit(Size.Unspecified)
     }
 
     /**
@@ -142,28 +138,29 @@ private class GlideAsyncImagePainter(
         }
     }
 
-    private suspend fun startRequest() {
-        val size = AsyncGlideSize()
-        size.connect(drawSize)
-
-        request(context)
-            .setupScaleTransform()
-            .load(model)
-            .flow(size, listener)
-            .collectLatest {
-                Logger.log("GlideAsyncImagePainter", "result $remembered $model -> $it")
-                if (!remembered) return@collectLatest
-                val older = painter
-                painter = when (it) {
-                    is GlideLoadResult.Loading -> loading
-                    is GlideLoadResult.Error -> failure
-                    is GlideLoadResult.Success -> it.painter
+    fun startRequest(scope: CoroutineScope, context: Context, model: Any?) {
+        Logger.log("GlideAsyncImagePainter", "startRequest $model")
+        painter = loading
+        rememberJob = (scope + Dispatchers.Main.immediate).launch {
+            request(context)
+                .setupScaleTransform()
+                .load(model)
+                .flow(glideSize, listener)
+                .collectLatest {
+                    Logger.log("GlideAsyncImagePainter", "result $remembered $model -> $it")
+                    if (!remembered) return@collectLatest
+                    val older = painter
+                    painter = when (it) {
+                        is GlideLoadResult.Loading -> loading
+                        is GlideLoadResult.Error -> failure
+                        is GlideLoadResult.Success -> it.painter
+                    }
+                    if (older != painter) {
+                        (older as? RememberObserver)?.onForgotten()
+                        (painter as? RememberObserver)?.onRemembered()
+                    }
                 }
-                if (older != painter) {
-                    (older as? RememberObserver)?.onForgotten()
-                    (painter as? RememberObserver)?.onRemembered()
-                }
-            }
+        }
     }
 }
 
@@ -176,13 +173,9 @@ internal fun rememberGlideAsyncImagePainter(
     listener: RequestListener<Drawable>? = null,
     request: (Context) -> RequestBuilder<Drawable> = { Glide.with(it).asDrawable() },
 ): Painter {
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    return remember(model) {
+    val painter = remember {
         GlideAsyncImagePainter(
-            model = model,
-            context = context,
-            scope = scope,
             loading = loading,
             failure = failure,
             scale = scale,
@@ -190,4 +183,8 @@ internal fun rememberGlideAsyncImagePainter(
             request = request
         )
     }
+    LaunchedEffect(model) {
+        painter.startRequest(this, context, model)
+    }
+    return painter
 }

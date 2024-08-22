@@ -56,6 +56,18 @@ class MainActivity : ComponentActivity() {
                     LazyColumn(modifier = Modifier.padding(innerPadding)) {
 
                         spacerItem {
+                            Button(
+                                onClick = {
+                                    TransformationActivity.start(this@MainActivity)
+                                }
+                            ) {
+                                Text("TransformationActivity")
+                            }
+                        }
+
+                        spacerItem { Text(NetTestImageType.AsyncPainter.name) }
+
+                        spacerItem {
                             ListTestItem(
                                 text = "NoCache Painter Rv List Test",
                                 type = NetTestImageType.AsyncPainter,
@@ -93,6 +105,8 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        spacerItem { Text(NetTestImageType.GlideImage.name) }
+
                         spacerItem {
                             ListTestItem(
                                 text = "NoCache GlideImage Rv List Test",
@@ -129,6 +143,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        spacerItem { Text(NetTestImageType.Coil.name) }
 
                         spacerItem {
                             ListTestItem(

@@ -17,7 +17,7 @@ import com.bumptech.glide.request.RequestListener
 
 @Composable
 fun GlideAsyncImage(
-    model: Any,
+    model: Any?,
     contentDescription: String?,
     modifier: Modifier,
     contentScale: ContentScale = ContentScale.Fit,

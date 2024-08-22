@@ -28,21 +28,20 @@ internal data class ImmediateGlideSize(val size: GlideSize) : ResolvableGlideSiz
 }
 
 internal class AsyncGlideSize : ResolvableGlideSize {
-    private val sizeFlow = MutableSharedFlow<Flow<Size>>(
+
+    private val drawSize = MutableSharedFlow<Size>(
         replay = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
-    fun connect(size: Flow<Size>) {
-        this.sizeFlow.tryEmit(size)
+    fun tryEmit(size: Size) {
+        this.drawSize.tryEmit(size)
     }
 
     private fun Float.roundFiniteToInt() = if (isFinite()) roundToInt() else Target.SIZE_ORIGINAL
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun getSize(): GlideSize {
-        return sizeFlow
-            .transformLatest { emitAll(it) }
+        return drawSize
             .mapNotNull {
                 when {
                     it.isUnspecified -> GlideSize(

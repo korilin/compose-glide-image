@@ -1,7 +1,9 @@
 package com.korilin.samples.glide
 
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.isSpecified
@@ -41,20 +43,19 @@ internal fun Modifier.asyncGlideNode(
     alpha: Float,
     colorFilter: ColorFilter? = null,
 ): Modifier {
-    return this then GlidePainterElement(
+    return clipToBounds()
+        .semantics {
+            if (contentDescription != null) {
+                this@semantics.contentDescription = contentDescription
+            }
+            role = Role.Image
+        } then GlidePainterElement(
         painter = painter,
         alignment = alignment,
         contentScale = contentScale,
         alpha = alpha,
         colorFilter = colorFilter,
     )
-        .clipToBounds()
-        .semantics {
-            if (contentDescription != null) {
-                this@semantics.contentDescription = contentDescription
-            }
-            role = Role.Image
-        }
 }
 
 internal data class GlidePainterElement(
@@ -77,6 +78,8 @@ internal data class GlidePainterElement(
 
     override fun update(node: GlidePainterNode) {
         val intrinsicsChanged = node.painter.intrinsicSize != painter.intrinsicSize
+
+        Logger.log("GlidePainterElement", "update $intrinsicsChanged")
 
         node.painter = painter
         node.alignment = alignment
@@ -113,6 +116,7 @@ internal class GlidePainterNode(
 
     private fun Size.toIntSize() = IntSize(width.roundToInt(), height.roundToInt())
     private inline fun Float.takeOrElse(block: () -> Float) = if (isFinite()) this else block()
+
     private fun Constraints.constrainWidth(width: Float) =
         width.coerceIn(minWidth.toFloat(), maxWidth.toFloat())
 
@@ -268,8 +272,6 @@ internal class GlidePainterNode(
             space = size.toIntSize(),
             layoutDirection = layoutDirection,
         )
-
-        Logger.log("GlideNode", "draw $size $scaledSize")
 
         // Draw the painter.
         translate(dx.toFloat(), dy.toFloat()) {

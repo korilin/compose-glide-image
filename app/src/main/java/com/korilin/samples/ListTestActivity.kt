@@ -93,39 +93,6 @@ class ListTestActivity : ComponentActivity() {
 
     @OptIn(ExperimentalGlideComposeApi::class)
     @Composable
-    fun NetTestImage(model: Any, type: NetTestImageType) {
-        when (type) {
-            NetTestImageType.AsyncPainter -> GlideAsyncImage(
-                model = model,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .heightIn(max = 20.dp),
-                contentScale = ContentScale.FillHeight,
-            )
-
-            NetTestImageType.GlideImage -> GlideImage(
-                model = model,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .heightIn(max = 20.dp),
-                contentScale = ContentScale.FillHeight,
-            )
-
-            NetTestImageType.Coil -> AsyncImage(
-                model = model,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .heightIn(max = 20.dp),
-                contentScale = ContentScale.FillHeight,
-            )
-        }
-    }
-
-    @OptIn(ExperimentalGlideComposeApi::class)
-    @Composable
     fun NetAvatarImage(model: String) {
         GlideImage(
             model,
