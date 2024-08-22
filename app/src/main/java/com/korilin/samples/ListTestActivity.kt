@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.AbstractComposeView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -42,11 +43,12 @@ import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import coil.compose.AsyncImage
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import com.korilin.samples.glide.GlideAsyncImage
 import com.korilin.samples.glide.rememberGlideAsyncImagePainter
 import com.korilin.samples.ui.theme.ComposeglideimageTheme
 import kotlin.properties.Delegates
 
-class ListTestActivity: ComponentActivity() {
+class ListTestActivity : ComponentActivity() {
 
     companion object {
         fun start(
@@ -91,10 +93,10 @@ class ListTestActivity: ComponentActivity() {
 
     @OptIn(ExperimentalGlideComposeApi::class)
     @Composable
-    fun NetTestImage(model: String, type: NetTestImageType) {
+    fun NetTestImage(model: Any, type: NetTestImageType) {
         when (type) {
-            NetTestImageType.Painter -> Image(
-                painter = rememberGlideAsyncImagePainter(model, ContentScale.FillHeight),
+            NetTestImageType.AsyncPainter -> GlideAsyncImage(
+                model = model,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxHeight()
@@ -106,7 +108,8 @@ class ListTestActivity: ComponentActivity() {
                 model = model,
                 contentDescription = null,
                 modifier = Modifier
-                    .size(20.dp),
+                    .fillMaxHeight()
+                    .heightIn(max = 20.dp),
                 contentScale = ContentScale.FillHeight,
             )
 
@@ -121,12 +124,11 @@ class ListTestActivity: ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalGlideComposeApi::class)
     @Composable
     fun NetAvatarImage(model: String) {
-        Image(
-            painter = rememberGlideAsyncImagePainter(
-                model, scale = ContentScale.Crop,
-            ),
+        GlideImage(
+            model,
             contentDescription = null,
             modifier = Modifier
                 .size(50.dp),
@@ -139,7 +141,7 @@ class ListTestActivity: ComponentActivity() {
     class Holder1(composer: TestImageComposeView) : Holder(composer)
     class Holder2(composer: TestImageComposeView) : Holder(composer)
 
-    inner class TestRvListAdapter(val type: NetTestImageType) : Adapter<Holder>() {
+    inner class TestRvListAdapter(private val type: NetTestImageType) : Adapter<Holder>() {
 
         val list = List(500) { it }
 
@@ -171,7 +173,7 @@ class ListTestActivity: ComponentActivity() {
             get() = true
 
         var pos by mutableIntStateOf(0)
-        var type by mutableStateOf(NetTestImageType.Painter)
+        var type by mutableStateOf(NetTestImageType.AsyncPainter)
 
         @Composable
         override fun Content() {

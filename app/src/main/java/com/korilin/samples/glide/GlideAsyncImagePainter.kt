@@ -74,7 +74,7 @@ private class GlideAsyncImagePainter(
 
     override fun DrawScope.onDraw() {
         drawSize.tryEmit(size)
-        (painter ?: loading)?.apply { draw(size, alpha, colorFilter) }
+        (painter ?: loading)?.apply { draw(intrinsicSize, alpha, colorFilter) }
     }
 
     private var rememberJob: Job? = null
@@ -120,7 +120,7 @@ private class GlideAsyncImagePainter(
     }
 
     /**
-     * @see <a href="https://github.com/bumptech/glide/blob/master/integration/compose/src/main/java/com/bumptech/glide/integration/compose/GlideImage.kt#L407">GlideImage</a>
+     * @see <a href="https://github.com/bumptech/glide/blob/master/integration/compose/src/main/java/com/bumptech/glide/integration/compose/GlideAsyncImage.kt#L407">GlideImage</a>
      */
     private fun RequestBuilder<Drawable>.setupScaleTransform(): RequestBuilder<Drawable> {
         return when (scale) {
