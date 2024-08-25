@@ -1,13 +1,10 @@
 package com.korilin.samples.glide
 
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.isSpecified
-import androidx.compose.ui.geometry.isUnspecified
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.translate
@@ -33,9 +30,10 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
+import kotlin.math.max
 import kotlin.math.roundToInt
 
-internal fun Modifier.asyncGlideNode(
+internal fun Modifier.glidePainterNode(
     painter: Painter,
     contentDescription: String? = null,
     alignment: Alignment,
@@ -59,11 +57,11 @@ internal fun Modifier.asyncGlideNode(
 }
 
 internal data class GlidePainterElement(
-    private val painter: Painter,
-    private val alignment: Alignment,
-    private val contentScale: ContentScale,
-    private val alpha: Float,
-    private val colorFilter: ColorFilter?,
+    val painter: Painter,
+    val alignment: Alignment,
+    val contentScale: ContentScale,
+    val alpha: Float,
+    val colorFilter: ColorFilter?
 ) : ModifierNodeElement<GlidePainterNode>() {
 
     override fun create(): GlidePainterNode {
@@ -79,8 +77,6 @@ internal data class GlidePainterElement(
     override fun update(node: GlidePainterNode) {
         val intrinsicsChanged = node.painter.intrinsicSize != painter.intrinsicSize
 
-        Logger.log("GlidePainterElement", "update $intrinsicsChanged")
-
         node.painter = painter
         node.alignment = alignment
         node.contentScale = contentScale
@@ -91,13 +87,12 @@ internal data class GlidePainterElement(
         if (intrinsicsChanged) {
             node.invalidateMeasurement()
         }
-
-        // Redraw because one of the node properties has changed.
+        // redraw because one of the node properties has changed.
         node.invalidateDraw()
     }
 
     override fun InspectorInfo.inspectableProperties() {
-        name = "content"
+        name = "paint"
         properties["painter"] = painter
         properties["alignment"] = alignment
         properties["contentScale"] = contentScale
@@ -114,22 +109,29 @@ internal class GlidePainterNode(
     var colorFilter: ColorFilter?,
 ) : Modifier.Node(), DrawModifierNode, LayoutModifierNode {
 
-    private fun Size.toIntSize() = IntSize(width.roundToInt(), height.roundToInt())
-    private inline fun Float.takeOrElse(block: () -> Float) = if (isFinite()) this else block()
+    /**
+     * Helper property to determine if we should size content to the intrinsic
+     * size of the Painter or not. This is only done if the Painter has an intrinsic size
+     */
+    private val painterIntrinsicSizeSpecified: Boolean
+        get() = painter.intrinsicSize.isSpecified
 
-    private fun Constraints.constrainWidth(width: Float) =
-        width.coerceIn(minWidth.toFloat(), maxWidth.toFloat())
+    override val shouldAutoInvalidate: Boolean
+        get() = false
 
-    private fun Constraints.constrainHeight(height: Float) =
-        height.coerceIn(minHeight.toFloat(), maxHeight.toFloat())
-
-    override val shouldAutoInvalidate get() = false
+    private inline fun log(subtag: String, message: () -> String) {
+        Logger.log("GlidePainterNode") {
+            "[$subtag] ${message()}"
+        }
+    }
 
     override fun MeasureScope.measure(
         measurable: Measurable,
-        constraints: Constraints,
+        constraints: Constraints
     ): MeasureResult {
-        val placeable = measurable.measure(modifyConstraints(constraints))
+        val modified = modifyConstraints(constraints)
+        log("measure") { "$constraints -> $modified" }
+        val placeable = measurable.measure(modified)
         return layout(placeable.width, placeable.height) {
             placeable.placeRelative(0, 0)
         }
@@ -137,150 +139,185 @@ internal class GlidePainterNode(
 
     override fun IntrinsicMeasureScope.minIntrinsicWidth(
         measurable: IntrinsicMeasurable,
-        height: Int,
+        height: Int
     ): Int {
-        return if (painter.intrinsicSize.isSpecified) {
-            val constraints = Constraints(maxHeight = height)
-            val layoutWidth = measurable.minIntrinsicWidth(modifyConstraints(constraints).maxHeight)
-            val scaledSize = calculateScaledSize(Size(layoutWidth.toFloat(), height.toFloat()))
-            maxOf(scaledSize.width.roundToInt(), layoutWidth)
+        val layoutWidth = measurable.minIntrinsicWidth(height)
+        return if (painterIntrinsicSizeSpecified) {
+            val constraints = modifyConstraints(Constraints(maxHeight = height))
+            max(constraints.minWidth, layoutWidth)
         } else {
-            measurable.minIntrinsicWidth(height)
-        }
+            layoutWidth
+        }.also { log("minIntrinsicWidth") { "$layoutWidth -> $it" } }
     }
 
     override fun IntrinsicMeasureScope.maxIntrinsicWidth(
         measurable: IntrinsicMeasurable,
-        height: Int,
+        height: Int
     ): Int {
-        return if (painter.intrinsicSize.isSpecified) {
-            val constraints = Constraints(maxHeight = height)
-            val layoutWidth = measurable.maxIntrinsicWidth(modifyConstraints(constraints).maxHeight)
-            val scaledSize = calculateScaledSize(Size(layoutWidth.toFloat(), height.toFloat()))
-            maxOf(scaledSize.width.roundToInt(), layoutWidth)
+        val layoutWidth = measurable.maxIntrinsicWidth(height)
+        return if (painterIntrinsicSizeSpecified) {
+            val constraints = modifyConstraints(Constraints(maxHeight = height))
+            max(constraints.minWidth, layoutWidth)
         } else {
-            measurable.maxIntrinsicWidth(height)
-        }
+            layoutWidth
+        }.also { log("maxIntrinsicWidth") { "$layoutWidth -> $it" } }
     }
 
     override fun IntrinsicMeasureScope.minIntrinsicHeight(
         measurable: IntrinsicMeasurable,
-        width: Int,
+        width: Int
     ): Int {
-        return if (painter.intrinsicSize.isSpecified) {
-            val constraints = Constraints(maxWidth = width)
-            val layoutHeight =
-                measurable.minIntrinsicHeight(modifyConstraints(constraints).maxWidth)
-            val scaledSize = calculateScaledSize(Size(width.toFloat(), layoutHeight.toFloat()))
-            maxOf(scaledSize.height.roundToInt(), layoutHeight)
+        val layoutHeight = measurable.minIntrinsicHeight(width)
+        return if (painterIntrinsicSizeSpecified) {
+            val constraints = modifyConstraints(Constraints(maxWidth = width))
+            max(constraints.minHeight, layoutHeight)
         } else {
-            measurable.minIntrinsicHeight(width)
-        }
+            layoutHeight
+        }.also { log("minIntrinsicHeight") { "$layoutHeight -> $it" } }
     }
 
     override fun IntrinsicMeasureScope.maxIntrinsicHeight(
         measurable: IntrinsicMeasurable,
-        width: Int,
+        width: Int
     ): Int {
-        return if (painter.intrinsicSize.isSpecified) {
-            val constraints = Constraints(maxWidth = width)
-            val layoutHeight =
-                measurable.maxIntrinsicHeight(modifyConstraints(constraints).maxWidth)
-            val scaledSize = calculateScaledSize(Size(width.toFloat(), layoutHeight.toFloat()))
-            maxOf(scaledSize.height.roundToInt(), layoutHeight)
+        val layoutHeight = measurable.maxIntrinsicHeight(width)
+        return if (painterIntrinsicSizeSpecified) {
+            val constraints = modifyConstraints(Constraints(maxWidth = width))
+            max(constraints.minHeight, layoutHeight)
         } else {
-            measurable.maxIntrinsicHeight(width)
-        }
+            layoutHeight
+        }.also { log("maxIntrinsicHeight") { "$layoutHeight -> $it" } }
     }
 
     private fun calculateScaledSize(dstSize: Size): Size {
-        if (dstSize.isEmpty()) {
-            return Size.Zero
-        }
+        return if (painterIntrinsicSizeSpecified) {
+            val srcWidth = if (!painter.intrinsicSize.hasSpecifiedAndFiniteWidth()) {
+                dstSize.width
+            } else {
+                painter.intrinsicSize.width
+            }
 
-        val intrinsicSize = painter.intrinsicSize
-        if (intrinsicSize.isUnspecified) {
-            return dstSize
-        }
+            val srcHeight = if (!painter.intrinsicSize.hasSpecifiedAndFiniteHeight()) {
+                dstSize.height
+            } else {
+                painter.intrinsicSize.height
+            }
 
-        val srcSize = Size(
-            width = intrinsicSize.width.takeOrElse { dstSize.width },
-            height = intrinsicSize.height.takeOrElse { dstSize.height },
-        )
-        val scaleFactor = contentScale.computeScaleFactor(srcSize, dstSize)
-        if (!scaleFactor.scaleX.isFinite() || !scaleFactor.scaleY.isFinite()) {
-            return dstSize
-        }
+            val srcSize = Size(srcWidth, srcHeight)
+            if (dstSize.width != 0f && dstSize.height != 0f) {
+                srcSize * contentScale.computeScaleFactor(srcSize, dstSize)
+            } else {
+                Size.Zero
+            }
 
-        return scaleFactor * srcSize
+        } else {
+            dstSize
+        }
     }
 
     private fun modifyConstraints(constraints: Constraints): Constraints {
-        // The constraints are a fixed pixel value that can't be modified.
-        val hasFixedWidth = constraints.hasFixedWidth
-        val hasFixedHeight = constraints.hasFixedHeight
-        if (hasFixedWidth && hasFixedHeight) {
-            return constraints
+        val hasBoundedDimens = constraints.hasBoundedWidth && constraints.hasBoundedHeight
+        val hasFixedDimens = constraints.hasFixedWidth && constraints.hasFixedHeight
+        if (hasFixedDimens || (!painterIntrinsicSizeSpecified && hasBoundedDimens)) {
+            // If we have fixed constraints or we are not attempting to size the
+            // composable based on the size of the Painter, do not attempt to
+            // modify them. Otherwise rely on Alignment and ContentScale
+            // to determine how to position the drawing contents of the Painter within
+            // the provided bounds
+            return constraints.copy(
+                minWidth = constraints.maxWidth,
+                minHeight = constraints.maxHeight
+            )
         }
 
-        // Fill the available space if the painter has no intrinsic size.
-        val hasBoundedSize = constraints.hasBoundedWidth && constraints.hasBoundedHeight
         val intrinsicSize = painter.intrinsicSize
-        if (intrinsicSize.isUnspecified) {
-            if (hasBoundedSize) {
-                return constraints.copy(
-                    minWidth = constraints.maxWidth,
-                    minHeight = constraints.maxHeight,
-                )
+        val intrinsicWidth =
+            if (intrinsicSize.hasSpecifiedAndFiniteWidth()) {
+                intrinsicSize.width.roundToInt()
             } else {
-                return constraints
+                constraints.minWidth
             }
-        }
 
-        // Changed from `PainterModifier`:
-        // Use the maximum space as the destination size if the constraints are bounded and at
-        // least one dimension is a fixed pixel value. Else, use the intrinsic size of the painter.
-        val dstWidth: Float
-        val dstHeight: Float
-        if (hasBoundedSize && (hasFixedWidth || hasFixedHeight)) {
-            dstWidth = constraints.maxWidth.toFloat()
-            dstHeight = constraints.maxHeight.toFloat()
-        } else {
-            val (intrinsicWidth, intrinsicHeight) = intrinsicSize
-            dstWidth = when {
-                intrinsicWidth.isFinite() -> constraints.constrainWidth(intrinsicWidth)
-                else -> constraints.minWidth.toFloat()
+        val intrinsicHeight =
+            if (intrinsicSize.hasSpecifiedAndFiniteHeight()) {
+                intrinsicSize.height.roundToInt()
+            } else {
+                constraints.minHeight
             }
-            dstHeight = when {
-                intrinsicHeight.isFinite() -> constraints.constrainHeight(intrinsicHeight)
-                else -> constraints.minHeight.toFloat()
-            }
-        }
 
-        // Scale the source dimensions into the destination dimensions and update the constraints.
-        val (scaledWidth, scaledHeight) = calculateScaledSize(Size(dstWidth, dstHeight))
-        return constraints.copy(
-            minWidth = constraints.constrainWidth(scaledWidth.roundToInt()),
-            minHeight = constraints.constrainHeight(scaledHeight.roundToInt()),
+        // Scale the width and height appropriately based on the given constraints
+        // and ContentScale
+        val constrainedWidth = constraints.constrainWidth(intrinsicWidth)
+        val constrainedHeight = constraints.constrainHeight(intrinsicHeight)
+        val scaledSize = calculateScaledSize(
+            Size(constrainedWidth.toFloat(), constrainedHeight.toFloat())
         )
+
+        // For both width and height constraints, consume the minimum of the scaled width
+        // and the maximum constraint as some scale types can scale larger than the maximum
+        // available size (ex ContentScale.Crop)
+        // In this case the larger of the 2 dimensions is used and the aspect ratio is
+        // maintained. Even if the size of the composable is smaller, the painter will
+        // draw its content clipped
+        val minWidth = constraints.constrainWidth(scaledSize.width.roundToInt())
+        val minHeight = constraints.constrainHeight(scaledSize.height.roundToInt())
+        return constraints.copy(minWidth = minWidth, minHeight = minHeight)
     }
 
     override fun ContentDrawScope.draw() {
-        val scaledSize = calculateScaledSize(size)
-        val (dx, dy) = alignment.align(
-            size = scaledSize.toIntSize(),
-            space = size.toIntSize(),
-            layoutDirection = layoutDirection,
+        val intrinsicSize = painter.intrinsicSize
+        val srcWidth = if (intrinsicSize.hasSpecifiedAndFiniteWidth()) {
+            intrinsicSize.width
+        } else {
+            size.width
+        }
+
+        val srcHeight = if (intrinsicSize.hasSpecifiedAndFiniteHeight()) {
+            intrinsicSize.height
+        } else {
+            size.height
+        }
+
+        val srcSize = Size(srcWidth, srcHeight)
+
+        // Compute the offset to translate the content based on the given alignment
+        // and size to draw based on the ContentScale parameter
+        val scaledSize = if (size.width != 0f && size.height != 0f) {
+            srcSize * contentScale.computeScaleFactor(srcSize, size)
+        } else {
+            Size.Zero
+        }
+
+        val alignedPosition = alignment.align(
+            IntSize(scaledSize.width.roundToInt(), scaledSize.height.roundToInt()),
+            IntSize(size.width.roundToInt(), size.height.roundToInt()),
+            layoutDirection
         )
 
-        // Draw the painter.
-        translate(dx.toFloat(), dy.toFloat()) {
+        val dx = alignedPosition.x.toFloat()
+        val dy = alignedPosition.y.toFloat()
+
+        // Only translate the current drawing position while delegating the Painter to draw
+        // with scaled size.
+        // Individual Painter implementations should be responsible for scaling their drawing
+        // content accordingly to fit within the drawing area.
+        translate(dx, dy) {
             with(painter) {
-                draw(scaledSize, alpha, colorFilter)
+                draw(size = scaledSize, alpha = alpha, colorFilter = colorFilter)
             }
         }
 
-        // Draw any child content on top of the painter.
+        // Maintain the same pattern as Modifier.drawBehind to allow chaining of DrawModifiers
         drawContent()
     }
+
+    private fun Size.hasSpecifiedAndFiniteWidth() = this != Size.Unspecified && width.isFinite()
+    private fun Size.hasSpecifiedAndFiniteHeight() = this != Size.Unspecified && height.isFinite()
+
+    override fun toString(): String =
+        "GlidePainterNode(" +
+                "painter=$painter, " +
+                "alignment=$alignment, " +
+                "alpha=$alpha, " +
+                "colorFilter=$colorFilter)"
 }

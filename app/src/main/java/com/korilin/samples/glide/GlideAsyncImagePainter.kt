@@ -1,50 +1,29 @@
 package com.korilin.samples.glide
 
 import android.content.Context
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.RememberObserver
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.isUnspecified
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.DefaultAlpha
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.util.trace
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
-import com.bumptech.glide.integration.ktx.flow
-import com.bumptech.glide.load.DataSource
-import com.bumptech.glide.load.engine.GlideException
-import com.bumptech.glide.manager
-import com.bumptech.glide.request.Request
 import com.bumptech.glide.request.RequestListener
-import com.bumptech.glide.request.target.SizeReadyCallback
-import com.bumptech.glide.request.target.Target
-import com.bumptech.glide.request.transition.Transition
-import com.google.accompanist.drawablepainter.DrawablePainter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.channels.ProducerScope
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
@@ -70,7 +49,7 @@ private class GlideAsyncImagePainter(
 
     override fun DrawScope.onDraw() {
         glideSize.tryEmit(size)
-        Logger.log("GlideAsyncImagePainter", "onDraw $size $intrinsicSize ${Exception().stackTraceToString()}")
+        Logger.log("GlideAsyncImagePainter") { "onDraw $size $intrinsicSize" }
         (painter ?: loading)?.apply { draw(size, alpha, colorFilter) }
     }
 
@@ -139,7 +118,6 @@ private class GlideAsyncImagePainter(
     }
 
     fun startRequest(scope: CoroutineScope, context: Context, model: Any?) {
-        Logger.log("GlideAsyncImagePainter", "startRequest $model")
         painter = loading
         rememberJob = (scope + Dispatchers.Main.immediate).launch {
             request(context)
@@ -147,7 +125,7 @@ private class GlideAsyncImagePainter(
                 .load(model)
                 .flow(glideSize, listener)
                 .collectLatest {
-                    Logger.log("GlideAsyncImagePainter", "result $remembered $model -> $it")
+                    Logger.log("GlideAsyncImagePainter") { "result $remembered $model -> $it" }
                     if (!remembered) return@collectLatest
                     val older = painter
                     painter = when (it) {

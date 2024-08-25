@@ -60,10 +60,9 @@ private class FlowTarget(
         dataSource: DataSource,
         isFirstResource: Boolean
     ): Boolean {
-        Logger.log(
-            "FlowTarget",
-            "onResourceReady first:$isFirstResource source:$dataSource Size(${resource.width}, ${resource.height}) model:$model "
-        )
+        Logger.log("FlowTarget") {
+            "onResourceReady first:$isFirstResource source:$dataSource Size(${resource.width}, ${resource.height}) model:$model"
+        }
         listener?.onResourceReady(resource, model, target, dataSource, isFirstResource)
         return false
     }
@@ -71,7 +70,7 @@ private class FlowTarget(
     override fun getSize(cb: SizeReadyCallback) {
         scope.launch {
             val complete = size.getSize()
-            Logger.log("FlowTarget", "getSize $complete")
+            Logger.log("FlowTarget") { "getSize $complete" }
             cb.onSizeReady(complete.width, complete.height)
         }
     }

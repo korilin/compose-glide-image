@@ -39,7 +39,7 @@ fun GlideAsyncImage(
 
     Layout(
         modifier = modifier
-            .asyncGlideNode(
+            .glidePainterNode(
                 painter,
                 contentDescription,
                 alignment,

@@ -10,8 +10,8 @@ object GlideComposeConfig {
 
 
 internal object Logger {
-    fun log(tag: String, message: String) {
-        if (GlideComposeConfig.loggerEnable) Log.d(tag, message)
+    inline fun log(tag: String, message: () -> String) {
+        if (GlideComposeConfig.loggerEnable) Log.d(tag, message())
     }
 
     fun error(tag: String, exception: GlideException?) {
