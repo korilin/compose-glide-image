@@ -40,11 +40,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.Adapter
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
-import coil.compose.AsyncImage
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
-import com.korilin.samples.glide.GlideAsyncImage
-import com.korilin.samples.glide.rememberGlideAsyncImagePainter
 import com.korilin.samples.ui.theme.ComposeglideimageTheme
 import kotlin.properties.Delegates
 
@@ -199,15 +196,16 @@ class ListTestActivity : ComponentActivity() {
                 ) {
 
                     val models = remember {
-                        val list = List(4) { WEBP_URL }
-                        if (diffId) {
-                            list.mapIndexed { i, url -> "${url}?id=${id}_${i}" }
-                        } else list
+                         List(4) { WEBP_URL }
                     }
 
-                    for (model in models) {
+                    for (index in models.indices) {
+                        val model = models[index]
+                        val idTag = "${id}_${index}"
+                        val urlModel = if (diffId) "${model}?id=$idTag" else model
                         NetTestImage(
-                            model = model,
+                            tag = idTag,
+                            model = urlModel,
                             type = type
                         )
                     }

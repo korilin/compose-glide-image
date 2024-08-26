@@ -32,9 +32,10 @@ val NetTestImageType.color get() = when(this) {
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-fun NetTestImage(model: Any?, type: NetTestImageType) {
+fun NetTestImage(tag: String? = null, model: Any?, type: NetTestImageType) {
     when (type) {
         NetTestImageType.AsyncPainter -> GlideAsyncImage(
+            tag = tag,
             model = model,
             contentDescription = null,
             modifier = Modifier

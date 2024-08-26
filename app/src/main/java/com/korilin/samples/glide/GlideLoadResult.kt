@@ -1,13 +1,12 @@
 package com.korilin.samples.glide
 
-import com.google.accompanist.drawablepainter.DrawablePainter
+import androidx.compose.ui.graphics.painter.Painter
 
 internal sealed interface GlideLoadResult {
-    data object Loading : GlideLoadResult
     data object Error : GlideLoadResult
-    data class Success(val painter: DrawablePainter) : GlideLoadResult {
+    data class Success(val painter: Painter) : GlideLoadResult {
         override fun toString(): String {
-            return "Success(painter={ painterIntrinsic: ${painter.intrinsicSize}})"
+            return "Success($painter={ painterIntrinsic: ${painter.intrinsicSize}})"
         }
     }
 }

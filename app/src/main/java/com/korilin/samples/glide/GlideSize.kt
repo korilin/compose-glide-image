@@ -34,7 +34,16 @@ internal class AsyncGlideSize : ResolvableGlideSize {
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    var hasEmit = false
+        private set
+
+    suspend fun emit(size: Size) {
+        hasEmit = true
+        this.drawSize.emit(size)
+    }
+
     fun tryEmit(size: Size) {
+        hasEmit = true
         this.drawSize.tryEmit(size)
     }
 

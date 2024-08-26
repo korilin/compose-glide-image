@@ -11,7 +11,6 @@ import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.SizeReadyCallback
 import com.bumptech.glide.request.target.Target
 import com.bumptech.glide.request.transition.Transition
-import com.google.accompanist.drawablepainter.DrawablePainter
 import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -92,7 +91,7 @@ private class FlowTarget(
     }
 
     override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
-        val painter = DrawablePainter(resource.mutate())
+        val painter = resource.toPainter()
         scope.trySend(GlideLoadResult.Success(painter))
     }
 
