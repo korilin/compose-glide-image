@@ -35,8 +35,8 @@ import com.bumptech.glide.request.RequestListener
  *     requestBuilder = {
  *         GlideApp.with(context)
  *             .asDrawable().diskCacheStrategy(diskCache)
- *             .skipMemoryCache(!cache.memory)
- *             .multiCache(CacheType.TYPE_IMAGE)
+ *             .skipMemoryCache(true)
+ *             .multiCache("image")
  *     }
  * )
  * ```
