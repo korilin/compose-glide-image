@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 
 internal fun RequestBuilder<Drawable>.flow(
     size: ResolvableGlideSize,
-    listener: RequestListener<Drawable>?,
+    listener: PainterRequestListener?,
 ): Flow<GlideLoadResult> {
     return callbackFlow {
         val target = FlowTarget(this, size, listener)
@@ -32,7 +32,7 @@ internal fun RequestBuilder<Drawable>.flow(
 private class FlowTarget(
     private val scope: ProducerScope<GlideLoadResult>,
     private val size: ResolvableGlideSize,
-    private val listener: RequestListener<Drawable>?,
+    private val listener: PainterRequestListener?,
 ) : Target<Drawable>, RequestListener<Drawable> {
 
     private val Drawable.width: Int
@@ -92,6 +92,7 @@ private class FlowTarget(
 
     override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
         val painter = resource.toPainter()
+        listener?.onPainterReady(painter)
         scope.trySend(GlideLoadResult.Success(painter))
     }
 

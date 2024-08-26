@@ -43,11 +43,10 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 internal sealed interface GlideNodeModel
-
-class GlideRequestModel(
+internal class GlideRequestModel(
     val model: Any?,
     val requestBuilder: RequestBuilder<Drawable>,
-    val listener: RequestListener<Drawable>?,
+    val listener: PainterRequestListener?,
 ) : GlideNodeModel {
 
     override fun equals(other: Any?): Boolean {

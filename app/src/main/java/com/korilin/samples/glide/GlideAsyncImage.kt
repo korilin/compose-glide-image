@@ -58,7 +58,7 @@ fun GlideAsyncImage(
     colorFilter: ColorFilter? = null,
     loading: Painter? = null,
     failure: Painter? = null,
-    listener: RequestListener<Drawable>? = null,
+    listener: PainterRequestListener? = null,
     requestBuilder: (Context) -> RequestBuilder<Drawable> = { Glide.with(it).asDrawable() },
 ) = trace("GlideAsyncImage") {
     val painter = when (model) {
