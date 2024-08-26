@@ -90,13 +90,6 @@ class DrawablePainter(
         }
     }
 
-    fun ensureAnimationRunning() {
-        if (drawable is Animatable) {
-            if (!drawable.isVisible) drawable.setVisible(true, true)
-            if (!drawable.isRunning) drawable.start()
-        }
-    }
-
     fun startAnimation() {
         drawable.callback = callback
         drawable.setVisible(true, true)
@@ -106,7 +99,9 @@ class DrawablePainter(
     }
 
     fun stopAnimation() {
-        if (drawable is Animatable) drawable.stop()
+        // Don't stop animation if drawable reload in memory.
+        // https://github.com/bumptech/glide/issues/5176
+        // if (drawable is Animatable) drawable.stop()
         drawable.setVisible(false, false)
         drawable.callback = null
     }

@@ -409,7 +409,6 @@ internal class GlidePainterNode(
         // content accordingly to fit within the drawing area.
         translate(dx, dy) {
             with(painter) {
-                if (this is DrawablePainter) ensureAnimationRunning()
                 draw(size = scaledSize, alpha = alpha, colorFilter = colorFilter)
             }
         }
