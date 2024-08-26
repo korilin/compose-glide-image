@@ -21,8 +21,30 @@ import com.bumptech.glide.request.RequestListener
 /**
  * Async image load node base on glide.
  *
+ * Use sample:
+ * ```Kotlin
+ * GlideAsyncImage(
+ *     model = model,
+ *     tag = "LogTag",
+ *     contentDescription = null,
+ *     modifier = Modifier
+ *         .height(20.dp)
+ *         .wrapContentWidth()
+ *         .background(type.color),
+ *     contentScale = ContentScale.FillHeight,
+ *     requestBuilder = {
+ *         GlideApp.with(context)
+ *             .asDrawable().diskCacheStrategy(diskCache)
+ *             .skipMemoryCache(!cache.memory)
+ *             .multiCache(CacheType.TYPE_IMAGE)
+ *     }
+ * )
+ * ```
+ *
  * @param model Support Url string, Uri, Drawable ResId, or [Painter]
  * @param tag Log tag used to locate problems
+ * @param requestBuilder return custom requestBuilder. The model is automatically loaded at the right time,
+ * so don't load model directly in requestBuilder. and use [listener] param if need set RequestListener.
  */
 @Composable
 fun GlideAsyncImage(
