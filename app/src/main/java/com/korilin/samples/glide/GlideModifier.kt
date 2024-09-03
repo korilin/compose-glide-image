@@ -470,7 +470,9 @@ internal class GlidePainterNode(
                 requestModel.requestBuilder
                     .setupScaleTransform()
                     .load(requestModel.model)
-                    .flow(glideSize, requestModel.listener)
+                    .flow(glideSize, requestModel.listener) {
+                        painter = placeablePainter
+                    }
                     .collectLatest {
                         log("startRequest") { "$it" }
 
