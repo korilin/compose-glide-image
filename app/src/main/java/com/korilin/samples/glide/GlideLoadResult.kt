@@ -9,4 +9,5 @@ internal sealed interface GlideLoadResult {
             return "Success($painter={ painterIntrinsic: ${painter.intrinsicSize}})"
         }
     }
+    data object Cleared: GlideLoadResult
 }

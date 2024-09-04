@@ -470,15 +470,14 @@ internal class GlidePainterNode(
                 requestModel.requestBuilder
                     .setupScaleTransform()
                     .load(requestModel.model)
-                    .flow(glideSize, requestModel.listener) {
-                        painter = placeablePainter
-                    }
+                    .flow(glideSize, requestModel.listener)
                     .collectLatest {
                         log("startRequest") { "$it" }
 
                         painter = when (it) {
                             is GlideLoadResult.Error -> failurePainter ?: placeablePainter
                             is GlideLoadResult.Success -> it.painter
+                            is GlideLoadResult.Cleared -> placeablePainter
                         }
 
                         startAnimation()
