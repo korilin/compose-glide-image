@@ -154,8 +154,13 @@ class ListTestActivity : ComponentActivity() {
                     setAdapter(adapter)
                     layoutManager =
                         LinearLayoutManager(it).apply { orientation = RecyclerView.VERTICAL }
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
                 }
             },
+            modifier = Modifier.fillMaxSize()
         )
     }
 
